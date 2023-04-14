@@ -46,8 +46,4 @@ def zip_folder(directory: str, newnamefile: str, skipsecure: bool, customregex) 
         click.echo('Directory cannot be empty', err=True)
 if __name__ == '__main__':
     zippinggroup()
-
-
-
-
     
