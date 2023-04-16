@@ -1,18 +1,24 @@
 import click, os 
 import zipfile
 import re
+def regex_validation(_, param, value: str) -> str:
+    try:
+        re.compile(value)
+    except:
+        raise click.BadParameter("regex is invalid")
+    return value
 @click.group()
 def zippinggroup(): ...
 @zippinggroup.command()
 @click.argument('directory', type=click.Path(exists=True, file_okay=False,  dir_okay=True, resolve_path=True))
 @click.argument('newnamefile', type=click.Path(exists=False, file_okay=True, dir_okay=False, resolve_path=True))
 @click.option('--skipsecure', required=False, is_flag=True, help="Skip unsecure files with credentials")
-@click.option('--customregex', required=False, help="adds custom regex for insecure files", type=tuple[str, ...], nargs=2)
-def zip_folder(directory: str, newnamefile: str, skipsecure: bool, customregex) -> None:
-    print(customregex)
+@click.option('--customregex', required=False, type=str, callback=regex_validation) 
+def zip_folder(directory: str, newnamefile: str, skipsecure: bool, customregex: str=False)-> None:
     files = os.listdir(directory)
     if len(files) > 0:
-        dangerous_files: tuple[str, ...] = [r'\.env', r'^config']
+        dangerous_files: set[str] = {r'\.env', r'^config'}
+        if customregex: dangerous_files.add(customregex)
         marked_files: set[str] = set()
         safe_files: set[str] = {x for x in files}
         if not skipsecure:
@@ -24,6 +30,8 @@ def zip_folder(directory: str, newnamefile: str, skipsecure: bool, customregex) 
                     safe_files.add(file)
         if newnamefile in safe_files:
             os.remove(newnamefile)
+        if len(safe_files) == 0:
+            click.echo(click.style("Warning: zipfile will contain nothing", fg="yellow", bold=True))
         with zipfile.ZipFile(newnamefile, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
             os.chdir(directory)
             for file in safe_files: zipf.write(file)
